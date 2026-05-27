@@ -1,58 +1,52 @@
 #include <iostream>
-#include <sched.h>     // For clone()
-#include <sys/wait.h>  // For waitpid()
-#include <unistd.h>    // For sethostname(), execvp()
-#include <string.h>    // For strerror()
+#include <string.h> //for strerror()
 
-// We need to allocate a block of memory for the child process's stack
-const int STACK_SIZE = 65536; // 64 KB
+#include<sched.h> //for clone()
+#include<sys/wait.h> //for SIGCHLD and waitpid()
 
-// This is the function that the containerized process will run
-int container_main(void* arg) {
-    std::cout << "[Container] Inside the container!" << std::endl;
+const int STACK_SIZE = 65536; //64kb
 
-    // 1. Change the hostname (this only affects this isolated UTS namespace)
-    std::string new_hostname = "nebula-container";
-    if (sethostname(new_hostname.c_str(), new_hostname.length()) != 0) {
-        std::cerr << "[Container] Error setting hostname: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    std::cout << "[Container] Hostname changed to: " << new_hostname << std::endl;
+//the child starts execution from here
+int child_main(void* arg)
+{
 
-    // 2. Launch a bash shell so we can interact with it
-    char* cmd[] = {(char*)"/bin/bash", NULL};
-    execvp(cmd[0], cmd);
-    
-    // execvp only returns if it fails
-    std::cerr << "[Container] Error launching shell!" << std::endl;
-    return -1;
+    std::cout << "Inside the child process" << std::endl;   
+
+    return 0;
 }
 
-int main() {
-    std::cout << "[Host] Starting Contain-It Engine..." << std::endl;
+int main()
+{
 
-    // 1. Allocate memory for the child's stack on the heap
+    std::cout << "Starting the container engine..." << std::endl;
+
+    //the child process created from clone requires its own stack
+    //allocating memory on heap for child's stack
     char* stack = new char[STACK_SIZE];
-    
-    // Note: Stacks grow downwards on x86, so we pass a pointer to the TOP of the stack
+
+    //stack grows downwards; pointer to the top of the stack is required
     char* stack_top = stack + STACK_SIZE;
 
-    // 2. Define the isolation flags (CLONE_NEWUTS isolates the hostname)
+    //flag bit mask for modification of clone() behaviour
     int flags = CLONE_NEWUTS | SIGCHLD;
 
-    // 3. Clone the process
-    std::cout << "[Host] Spawning isolated process using clone()..." << std::endl;
-    pid_t child_pid = clone(container_main, stack_top, flags, NULL);
+    //creating the child process using clone()
+    std::cout << "Creating an isolated child process using clone..." << std::endl;
 
-    if (child_pid == -1) {
-        std::cerr << "[Host] clone() failed: " << strerror(errno) << std::endl;
-        return -1;
+    pid_t child_pid = clone(child_main, stack_top, flags, NULL);
+
+    //clone() returns -1 on failure else child pid;
+    if(child_pid == -1)
+    {
+        std::cerr << "Clone() failed" << strerror(errno) << std::endl;
     }
 
-    // 4. Wait for the container to exit (when you type 'exit' in the bash shell)
+    //waiting for child to terminate
     waitpid(child_pid, NULL, 0);
-    
-    std::cout << "[Host] Container exited. Cleaning up..." << std::endl;
+
+    std::cout << "Container exited, cleaning up..." << std::endl;
+
+    //freeing up heap allocated memory
     delete[] stack;
 
     return 0;
