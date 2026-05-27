@@ -12,10 +12,10 @@ int child_main(void* arg)
 
     std::cout << "Inside the child process" << std::endl;   
 
-    std::string n_hostname = "childContainer";
-
     //changing the hostname, this process has an isolated uts namespace
     //hence the change only affects this process
+    std::string n_hostname = "childContainer";
+
     if(sethostname(n_hostname.c_str(), n_hostname.length()) != 0)
     {
         std::cerr << "Host name couldn't be changed " << strerror(errno) << std::endl;
@@ -38,9 +38,16 @@ int child_main(void* arg)
             std::cout << buf << std::endl;
         }
     }
+    
+    //launching a shell in the child container 
+    char* cmd[] = {(char*)"/bin/bash", NULL};
+    execvp(cmd[0], cmd);
 
-    return 0;
+    //execvp only returns if it fails
+    std::cerr << "Error launching shell" << std::endl;
+    return -1;
 }
+
 
 int main()
 {
