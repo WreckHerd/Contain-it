@@ -12,6 +12,33 @@ int child_main(void* arg)
 
     std::cout << "Inside the child process" << std::endl;   
 
+    std::string n_hostname = "childContainer";
+
+    //changing the hostname, this process has an isolated uts namespace
+    //hence the change only affects this process
+    if(sethostname(n_hostname.c_str(), n_hostname.length()) != 0)
+    {
+        std::cerr << "Host name couldn't be changed " << strerror(errno) << std::endl;
+        return -1;
+    }
+    else
+    {
+        std::cout << "Host name changed successfully. The new hostname is: ";
+
+        char buf[256];
+
+        //gethostname fetches the hostname of the current uts namespace
+        if(gethostname(buf, sizeof(buf)) != 0)
+        {
+            std::cerr << "Couldn't get hostname " << strerror(errno) << std::endl;
+            return -1;
+        }
+        else
+        {
+            std::cout << buf << std::endl;
+        }
+    }
+
     return 0;
 }
 
