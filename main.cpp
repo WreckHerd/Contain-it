@@ -7,12 +7,20 @@
 #include<sys/mount.h>//for mount and related flags
 
 const int STACK_SIZE = 65536; //64kb
+int piperd;
+
+//must be executed before child process is entered
+void setup_cgroups(pid_t child_pid)
+{
+
+}
 
 //the child starts execution from here
 int child_main(void* arg)
-{
+{    
 
     std::cout << "Inside the child process" << std::endl;   
+
 
     //changing the hostname, this process has an isolated uts namespace
     //hence the change only affects this process
@@ -64,6 +72,14 @@ int child_main(void* arg)
         std::cerr << "Failed to mount proc" << strerror(errno) << std::endl;
     }
     std::cout << "proc mounted successfully" << std::endl;
+
+    //halting the process until the parent process writes into the pipe
+    char ch;
+    if(read(piperd, &ch, 1) != 1)
+    {
+        std::cerr << "couldn't read from pipe" << strerror(errno) << std::endl;
+    }
+    close(piperd);
     
     //launching a shell in the child container 
     char* cmd[] = {(char*)"/bin/ash", NULL};
@@ -80,6 +96,18 @@ int main()
 
     std::cout << "Starting the container engine..." << std::endl;
 
+
+    //pipe to manage relative execution of parent and child
+    int pipefd[2];
+    if(pipe(pipefd) != 0)
+    {
+        std::cerr << "pipe couldn't be formed " << strerror(errno) << std::endl;       
+    }
+    piperd = pipefd[0];
+    //setup_cgroup function must be executed from the parent
+    //and must be executed before shell is launched in the child
+
+
     //the child process created from clone requires its own stack
     //allocating memory on heap for child's stack
     char* stack = new char[STACK_SIZE];
@@ -92,21 +120,34 @@ int main()
 
     //creating the child process using clone()
     std::cout << "Creating an isolated child process using clone..." << std::endl;
-
     pid_t child_pid = clone(child_main, stack_top, flags, NULL);
 
-    //clone() returns -1 on failure else child pid;
+    //clone() returns child's pid on success else -1;
     if(child_pid == -1)
     {
         std::cerr << "Clone() failed" << strerror(errno) << std::endl;
     }
 
-    //waiting for child to terminate
+    //child is blocked at the read line
+
+    //close the read end of the pipe in parent
+    close(pipefd[0]);
+
+    //setup cgroups before child executes shell
+    setup_cgroups(child_pid);
+
+    //send the "Go" signal to the child
+    if(write(pipefd[1], "A" , 1) != 1)
+    {
+        std::cerr << "Couldn't write into pipe" << strerror(errno) << std::endl;
+    }
+    close(pipefd[1]);
+
+    //now we wait for child to finish
     waitpid(child_pid, NULL, 0);
 
     std::cout << "Container exited, cleaning up..." << std::endl;
 
-    //freeing up heap allocated memory
     delete[] stack;
 
     return 0;
