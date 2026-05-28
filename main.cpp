@@ -4,6 +4,8 @@
 #include<sched.h> //for clone()
 #include<sys/wait.h> //for SIGCHLD and waitpid()
 
+#include<sys/mount.h>//for mount and related flags
+
 const int STACK_SIZE = 65536; //64kb
 
 //the child starts execution from here
@@ -15,7 +17,6 @@ int child_main(void* arg)
     //changing the hostname, this process has an isolated uts namespace
     //hence the change only affects this process
     std::string n_hostname = "childContainer";
-
     if(sethostname(n_hostname.c_str(), n_hostname.length()) != 0)
     {
         std::cerr << "Host name couldn't be changed " << strerror(errno) << std::endl;
@@ -39,6 +40,10 @@ int child_main(void* arg)
         }
     }
 
+    //making this mount namespace private 
+    //ie. mounts/unmounts in host/child don't affect one another
+    mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL);
+
     //chrooting into the alpine image 
     const char* rootfs_path = "/vagrant/Contain-it/alpine-rootfs";
     if(chroot(rootfs_path) != 0)
@@ -48,8 +53,17 @@ int child_main(void* arg)
     }
     std::cout << "Root directory successfully changed to the image" << std::endl;
 
-    //
+    //chroot does not change the current working directory
     chdir("/");
+    
+    //mounting the proc filesystem to the /proc directory of the image
+    //ps now reads the active process from /proc directory
+    //only processes under this namespace will be visible
+    if(mount("proc","/proc", "proc", 0, NULL) != 0)
+    {
+        std::cerr << "Failed to mount proc" << strerror(errno) << std::endl;
+    }
+    std::cout << "proc mounted successfully" << std::endl;
     
     //launching a shell in the child container 
     char* cmd[] = {(char*)"/bin/ash", NULL};
@@ -74,7 +88,7 @@ int main()
     char* stack_top = stack + STACK_SIZE;
 
     //flag bit mask for modification of clone() behaviour
-    int flags = CLONE_NEWUTS | SIGCHLD;
+    int flags = CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD;
 
     //creating the child process using clone()
     std::cout << "Creating an isolated child process using clone..." << std::endl;
