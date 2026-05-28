@@ -38,9 +38,21 @@ int child_main(void* arg)
             std::cout << buf << std::endl;
         }
     }
+
+    //chrooting into the alpine image 
+    const char* rootfs_path = "/vagrant/Contain-it/alpine-rootfs";
+    if(chroot(rootfs_path) != 0)
+    {
+        std::cerr << "Couldn't chroot into the image" << strerror(errno) << std::endl;
+        return -1;
+    }
+    std::cout << "Root directory successfully changed to the image" << std::endl;
+
+    //
+    chdir("/");
     
     //launching a shell in the child container 
-    char* cmd[] = {(char*)"/bin/bash", NULL};
+    char* cmd[] = {(char*)"/bin/ash", NULL};
     execvp(cmd[0], cmd);
 
     //execvp only returns if it fails
