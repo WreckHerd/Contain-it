@@ -6,12 +6,47 @@
 
 #include<sys/mount.h>//for mount and related flags
 
+#include<sys/stat.h>//for mkdir
+#include<fstream>//for ofstream
+
 const int STACK_SIZE = 65536; //64kb
 int piperd;
 
 //must be executed before child process is entered
 void setup_cgroups(pid_t child_pid)
 {
+
+    std::cout << "setting up cgroups" << std::endl;
+
+    const char* cgrp_dir = "/sys/fs/cgroup/container";
+
+    //creating a new cgroup for container process
+    mkdir(cgrp_dir, 0755);
+
+    //restricting the memory for the container cgroup to 50MB
+    std::string mem_limit = "52428800";//50MB
+    std::ofstream mem_file(std::string(cgrp_dir) + "/memory.max"); 
+    if(mem_file.is_open())
+    {
+        mem_file << mem_limit;
+        mem_file.close();
+    }
+    else
+    {
+        std::cerr << "couldn't set memory limit" << strerror(errno) << std::endl;
+    }
+
+    //putting the child process into the newly created container cgroup
+    std::ofstream proc_file(std::string(cgrp_dir) + "/cgroup.procs");
+    if(proc_file.is_open())
+    {
+        proc_file << child_pid;
+        proc_file.close();
+    }
+    else
+    {
+        std::cerr << "couldn't put child process in container cgroup" << strerror(errno) << std::endl;
+    }
 
 }
 
@@ -72,6 +107,12 @@ int child_main(void* arg)
         std::cerr << "Failed to mount proc" << strerror(errno) << std::endl;
     }
     std::cout << "proc mounted successfully" << std::endl;
+
+    // This provides /dev/zero, /dev/null, /dev/urandom, etc.
+    if (mount("devtmpfs", "/dev", "devtmpfs", 0, NULL) != 0) {
+        std::cerr << "[Container] Failed to mount /dev: " << strerror(errno) << std::endl;
+        return -1;
+    }
 
     //halting the process until the parent process writes into the pipe
     char ch;
@@ -148,6 +189,7 @@ int main()
 
     std::cout << "Container exited, cleaning up..." << std::endl;
 
+    rmdir("/sys/fs/cgroup/container");
     delete[] stack;
 
     return 0;
