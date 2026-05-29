@@ -36,6 +36,19 @@ void setup_cgroups(pid_t child_pid)
         std::cerr << "couldn't set memory limit" << strerror(errno) << std::endl;
     }
 
+    //restricting the max processes for container cgroup to max_proc
+    std::string max_proc = "20";
+    std::ofstream maxpid_file(std::string(cgrp_dir) + "/pids.max");
+    if(maxpid_file.is_open())
+    {
+        maxpid_file << max_proc;
+        maxpid_file.close();
+    }
+    else
+    {
+        std::cerr << "couldn't set max process limit" << strerror(errno) << std::endl;
+    }
+
     //putting the child process into the newly created container cgroup
     std::ofstream proc_file(std::string(cgrp_dir) + "/cgroup.procs");
     if(proc_file.is_open())
