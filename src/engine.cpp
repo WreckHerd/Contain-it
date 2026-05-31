@@ -3,6 +3,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sys/mount.h>
+#include <sys/stat.h>//for mkdir
 #include <string.h>
 
 namespace containit {
@@ -55,13 +56,21 @@ namespace containit {
 
             //chroot does not change the current working directory
             chdir("/");
+
+            // CREATE MOUNT POINTS IF MISSING
+            // We use 0755 for standard rwxr-xr-x directory permissions.
+            // We don't check for errors here because if mkdir fails with EEXIST 
+            // (folder already exists), that is perfectly fine!
+            mkdir("/proc", 0755);
+            mkdir("/dev", 0755);
             
             //mounting the proc filesystem to the /proc directory of the image
             //ps now reads the active process from /proc directory
             //only processes under this namespace will be visible
             if(mount("proc","/proc", "proc", 0, NULL) != 0)
             {
-                std::cerr << "Failed to mount proc" << strerror(errno) << std::endl;
+                std::cerr << "Failed to mount proc " << strerror(errno) << std::endl;
+                return -1;
             }
             std::cout << "proc mounted successfully" << std::endl;
 
