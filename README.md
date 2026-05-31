@@ -18,20 +18,7 @@ When `./contain-it run` is executed, the engine performs the following lifecycle
 6. The child severs mount propagation (`MS_PRIVATE`), `chroot`s into the downloaded Alpine rootfs, and mounts its own virtual `/proc` and `/dev`.
 7. The child calls `execvp()` to replace its process image with the requested shell.
 
-## Safe Testing Environment
-Because this engine manipulates core Linux kernel state and requires `root` privileges, it is recommended to test it inside the provided Virtual Machine to protect your host system.
+## Testing
+Because this engine manipulates core Linux kernel state and requires `root` privileges, it is recommended to test it inside a Virtual Machine.
 
-### Prerequisites
-* Vagrant
-* VirtualBox or libvirt/KVM
-
-### Spinning up the Sandbox
-```bash
-# 1. Boot the Ubuntu VM
-vagrant up
-
-# 2. SSH into the isolated environment
-vagrant ssh
-
-# 3. Move to the synced project directory
-cd /vagrant
+The project contains a Makefile and can be complied using `make`
