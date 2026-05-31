@@ -9,8 +9,83 @@
 #include<sys/stat.h>//for mkdir
 #include<fstream>//for ofstream
 
+#include<getopt.h>//for cli parsing
+
 const int STACK_SIZE = 65536; //64kb
 int piperd;
+
+struct ContainerConf 
+{
+    std::string memory_limit = "52428800";//50MB
+    std::string rootfs_path = "/vagrant/alpine-rootfs";
+    std::string command =  "/bin/sh";
+    std::string process_limit = "20"; 
+} config;
+
+void print_usage()
+{
+    std::cout << "Usage: contain-it run [OPTIONS]\n"
+                << "Options:\n"
+                << "  -m, --memory <bytes>  Set memory limit (default: 50MB)\n"
+                << "  -r, --rootfs <path>   Path to the root filesystem\n"
+                << "  -c, --cmd <command>   Command to execute (default: /bin/sh)\n"
+                << "  -p, --procs <num_maxprocesses> Set process limit (default: 20)\n"
+                << "  -h, --help            Show this help message\n";
+    exit(1);
+}
+
+void parser(int argc, char* argv[]) 
+{
+    if (argc < 2)
+    {
+        print_usage();
+    }
+
+    if(std::string(argv[1]) != "run")
+    {
+        std::cerr << "Unknown command " << argv[1] << std::endl;
+        print_usage();
+    }
+
+    //struct option is the data type 
+    //long_options is the indetifier, [] specifies array
+    struct option long_options[] = {
+        {"memory", required_argument, 0, 'm'},
+        {"rootfs", required_argument, 0, 'r'},
+        {"cmd", required_argument, 0, 'c'},
+        {"procs", required_argument, 0, 'p'},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    int option_index = 0;
+
+    //parsing starts from argv[2]; skipping ""./contain-it" and "run".
+    optind = 2;
+
+    while((opt = getopt_long(argc, argv, "m:r:c:p:h", long_options, &option_index)) != -1)
+    {
+        switch(opt)
+        {
+            case 'm':
+                config.memory_limit = optarg;
+                break;
+            case 'r':
+                config.rootfs_path = optarg;
+                break;
+            case 'c':
+                config.command = optarg;
+                break;
+            case 'p':
+                config.process_limit = optarg;
+                break;
+            case 'h':
+            default:
+                print_usage();
+        }
+    }
+}
 
 //must be executed before child process is entered
 void setup_cgroups(pid_t child_pid)
@@ -18,17 +93,16 @@ void setup_cgroups(pid_t child_pid)
 
     std::cout << "setting up cgroups" << std::endl;
 
-    const char* cgrp_dir = "/sys/fs/cgroup/container";
 
     //creating a new cgroup for container process
+    const char* cgrp_dir = "/sys/fs/cgroup/container";
     mkdir(cgrp_dir, 0755);
 
     //restricting the memory for the container cgroup to 50MB
-    std::string mem_limit = "52428800";//50MB
     std::ofstream mem_file(std::string(cgrp_dir) + "/memory.max"); 
     if(mem_file.is_open())
     {
-        mem_file << mem_limit;
+        mem_file << config.memory_limit;
         mem_file.close();
     }
     else
@@ -37,11 +111,10 @@ void setup_cgroups(pid_t child_pid)
     }
 
     //restricting the max processes for container cgroup to max_proc
-    std::string max_proc = "20";
     std::ofstream maxpid_file(std::string(cgrp_dir) + "/pids.max");
     if(maxpid_file.is_open())
     {
-        maxpid_file << max_proc;
+        maxpid_file << config.process_limit;
         maxpid_file.close();
     }
     else
@@ -101,8 +174,7 @@ int child_main(void* arg)
     mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL);
 
     //chrooting into the alpine image 
-    const char* rootfs_path = "/vagrant/Contain-it/alpine-rootfs";
-    if(chroot(rootfs_path) != 0)
+    if(chroot(config.rootfs_path.c_str()) != 0)
     {
         std::cerr << "Couldn't chroot into the image" << strerror(errno) << std::endl;
         return -1;
@@ -136,7 +208,7 @@ int child_main(void* arg)
     close(piperd);
     
     //launching a shell in the child container 
-    char* cmd[] = {(char*)"/bin/ash", NULL};
+    char* cmd[] = {(char*)config.command.c_str(), NULL};
     execvp(cmd[0], cmd);
 
     //execvp only returns if it fails
@@ -145,8 +217,9 @@ int child_main(void* arg)
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
+    parser(argc, argv);
 
     std::cout << "Starting the container engine..." << std::endl;
 
