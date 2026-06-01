@@ -49,7 +49,7 @@ namespace containit {
             //chrooting into the alpine image 
             if(chroot(config.rootfs_path.c_str()) != 0)
             {
-                std::cerr << "Couldn't chroot into the image" << strerror(errno) << std::endl;
+                std::cerr << "Couldn't chroot into the image " << strerror(errno) << std::endl;
                 return -1;
             }
             std::cout << "Root directory successfully changed to the image" << std::endl;
@@ -87,6 +87,10 @@ namespace containit {
                 std::cerr << "couldn't read from pipe" << strerror(errno) << std::endl;
             }
             close(config.piperd);
+
+            clearenv(); // Wipe all host environment variables (Security!)
+            setenv("TERM", "xterm-256color", 1); // Allow colored terminal output
+            setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1); // Set standard Alpine paths
             
             //launching a shell in the child container 
             char* cmd[] = {(char*)config.command.c_str(), NULL};
