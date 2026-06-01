@@ -10,7 +10,7 @@ namespace containit {
     namespace engine {
         
         //the child starts execution from here
-        int child_main(void* arg)
+        int child_main(void*)
         {    
 
             std::cout << "Inside the child process" << std::endl;   

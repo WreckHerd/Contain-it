@@ -44,6 +44,28 @@ namespace containit {
                 std::cerr << "couldn't set max process limit" << strerror(errno) << std::endl;
             }
 
+            // Apply CPU Limits
+            // We translate the user's core request (e.g., 0.5) into a CFS time budget.
+            if (config.cpu_core_limit > 0.0) 
+            {
+                std::ofstream cpu_file(std::string(cgrp_dir) + "/cpu.max");
+                if (cpu_file.is_open()) 
+                {
+                    int period = 100000; // The standard 100ms CFS window
+                    int max_quota = static_cast<int>(config.cpu_core_limit * period);
+                    
+                    // Format is: "$MAX $PERIOD"
+                    cpu_file << max_quota << " " << period;
+                    cpu_file.close();
+                    std::cout << "[Host] CPU limit set to " << config.cpu_core_limit << " cores." << std::endl;
+                }
+                else
+                {
+                    std::cerr << "[Host] Warning: Could not set CPU limit." << std::endl;
+                }
+            }
+
+
             //putting the child process into the newly created container cgroup
             std::ofstream proc_file(std::string(cgrp_dir) + "/cgroup.procs");
             if(proc_file.is_open())

@@ -9,6 +9,7 @@ struct ContainerConf
     std::string command =  "/bin/sh";
     std::string process_limit = "20"; 
     int piperd;
+    float cpu_core_limit = 0.0;
 };
 
 extern ContainerConf config;

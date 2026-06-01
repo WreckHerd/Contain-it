@@ -13,7 +13,8 @@ namespace containit{
                         << "  -m, --memory <bytes>  Set memory limit (default: 50MB)\n"
                         << "  -r, --rootfs <path>   Path to the root filesystem\n"
                         << "  -c, --cmd <command>   Command to execute (default: /bin/sh)\n"
-                        << "  -p, --procs <num_maxprocesses> Set process limit (default: 20)\n"
+                        << "  -p, --procs <maxproc> Set process limit (default: 20)\n"
+                        << "  -u, --cpu <num_cores> Set core limit (eg. 0.5, 1.0)\n"
                         << "  -h, --help            Show this help message\n";
             exit(1);
         }
@@ -38,6 +39,7 @@ namespace containit{
                 {"rootfs", required_argument, 0, 'r'},
                 {"cmd", required_argument, 0, 'c'},
                 {"procs", required_argument, 0, 'p'},
+                {"cpu", required_argument, 0, 'u'},
                 {"help", no_argument, 0, 'h'},
                 {0, 0, 0, 0}
             };
@@ -48,7 +50,7 @@ namespace containit{
             //parsing starts from argv[2]; skipping ""./contain-it" and "run".
             optind = 2;
 
-            while((opt = getopt_long(argc, argv, "m:r:c:p:h", long_options, &option_index)) != -1)
+            while((opt = getopt_long(argc, argv, "m:r:c:p:u:h", long_options, &option_index)) != -1)
             {
                 switch(opt)
                 {
@@ -64,9 +66,18 @@ namespace containit{
                     case 'p':
                         config.process_limit = optarg;
                         break;
+                    case 'u':
+                        try{
+                            config.cpu_core_limit = std::stof(optarg);
+                        } catch (const std::exception& e) {
+                            std::cerr << "Invalid CPU limit provided.\n";
+                            exit(1);
+                        }
+                        break;
                     case 'h':
                     default:
                         print_usage();
+                        break;
                 }
             }
         }
