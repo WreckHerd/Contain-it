@@ -13,12 +13,13 @@ namespace containit {
         void setup_cgroups(pid_t child_pid)
         {
 
-            std::cout << "setting up cgroups" << std::endl;
+            std::cout << "[INFO]    Setting up cgroups" << std::endl;
 
 
             //creating a new cgroup for container process
             const char* cgrp_dir = "/sys/fs/cgroup/container";
             mkdir(cgrp_dir, 0755);
+
 
             //restricting the memory for the container cgroup to 50MB
             std::ofstream mem_file(std::string(cgrp_dir) + "/memory.max"); 
@@ -26,10 +27,11 @@ namespace containit {
             {
                 mem_file << config.memory_limit;
                 mem_file.close();
+                std::cout << "  --->    Memory limit set to: " << config.memory_limit << "bytes" << std::endl;
             }
             else
             {
-                std::cerr << "couldn't set memory limit" << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   couldn't set memory limit" << strerror(errno) << std::endl;
             }
 
             //restricting the max processes for container cgroup to max_proc
@@ -38,10 +40,11 @@ namespace containit {
             {
                 maxpid_file << config.process_limit;
                 maxpid_file.close();
+                std::cout << "  --->    Max processes inside container limited to: " << config.process_limit << std::endl;
             }
             else
             {
-                std::cerr << "couldn't set max process limit" << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   couldn't set max process limit" << strerror(errno) << std::endl;
             }
 
             // Apply CPU Limits
@@ -57,11 +60,11 @@ namespace containit {
                     // Format is: "$MAX $PERIOD"
                     cpu_file << max_quota << " " << period;
                     cpu_file.close();
-                    std::cout << "[Host] CPU limit set to " << config.cpu_core_limit << " cores." << std::endl;
+                    std::cout << "  --->    CPU limit set to " << config.cpu_core_limit << " cores." << std::endl;
                 }
                 else
                 {
-                    std::cerr << "[Host] Warning: Could not set CPU limit." << std::endl;
+                    std::cerr << "[ERROR]   Warning: Could not set CPU limit." << std::endl;
                 }
             }
 
@@ -72,10 +75,11 @@ namespace containit {
             {
                 proc_file << child_pid;
                 proc_file.close();
+                std::cout << "[INFO]    putting child process into container cgroup" << std::endl;
             }
             else
             {
-                std::cerr << "couldn't put child process in container cgroup" << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   couldn't put child process in container cgroup" << strerror(errno) << std::endl;
             }
 
         }

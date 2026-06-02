@@ -13,27 +13,33 @@ namespace containit {
         int child_main(void*)
         {    
 
-            std::cout << "Inside the child process" << std::endl;   
-
+            //halting the process until the parent process writes into the pipe
+            char ch;
+            if(read(config.piperd, &ch, 1) != 1)
+            {
+                std::cerr << "[ERROR]   couldn't read from pipe" << strerror(errno) << std::endl;
+            }
+            close(config.piperd);
+            
+            std::cout << "[INFO]    Entering child process..." << std::endl;
 
             //changing the hostname, this process has an isolated uts namespace
             //hence the change only affects this process
-            std::string n_hostname = "childContainer";
-            if(sethostname(n_hostname.c_str(), n_hostname.length()) != 0)
+            if(sethostname(config.hostname.c_str(), config.hostname.length()) != 0)
             {
-                std::cerr << "Host name couldn't be changed " << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   Host name couldn't be changed " << strerror(errno) << std::endl;
                 return -1;
             }
             else
             {
-                std::cout << "Host name changed successfully. The new hostname is: ";
+                std::cout << "  --->    Host name changed successfully. The new hostname is: ";
 
                 char buf[256];
 
                 //gethostname fetches the hostname of the current uts namespace
                 if(gethostname(buf, sizeof(buf)) != 0)
                 {
-                    std::cerr << "Couldn't get hostname " << strerror(errno) << std::endl;
+                    std::cerr << "[ERROR]   Couldn't get hostname " << strerror(errno) << std::endl;
                     return -1;
                 }
                 else
@@ -49,10 +55,10 @@ namespace containit {
             //chrooting into the alpine image 
             if(chroot(config.rootfs_path.c_str()) != 0)
             {
-                std::cerr << "Couldn't chroot into the image " << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]Couldn't chroot into the image " << strerror(errno) << std::endl;
                 return -1;
             }
-            std::cout << "Root directory successfully changed to the image" << std::endl;
+            std::cout << "[INFO]    Root directory successfully changed to the image" << std::endl;
 
             //chroot does not change the current working directory
             chdir("/");
@@ -69,35 +75,33 @@ namespace containit {
             //only processes under this namespace will be visible
             if(mount("proc","/proc", "proc", 0, NULL) != 0)
             {
-                std::cerr << "Failed to mount proc " << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   Failed to mount proc " << strerror(errno) << std::endl;
                 return -1;
             }
-            std::cout << "proc mounted successfully" << std::endl;
+            std::cout << "[INFO]    proc mounted successfully" << std::endl;
 
             // This provides /dev/zero, /dev/null, /dev/urandom, etc.
             if (mount("devtmpfs", "/dev", "devtmpfs", 0, NULL) != 0) {
-                std::cerr << "[Container] Failed to mount /dev: " << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   Failed to mount /dev: " << strerror(errno) << std::endl;
                 return -1;
             }
 
-            //halting the process until the parent process writes into the pipe
-            char ch;
-            if(read(config.piperd, &ch, 1) != 1)
-            {
-                std::cerr << "couldn't read from pipe" << strerror(errno) << std::endl;
-            }
-            close(config.piperd);
 
             clearenv(); // Wipe all host environment variables (Security!)
             setenv("TERM", "xterm-256color", 1); // Allow colored terminal output
             setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1); // Set standard Alpine paths
+
+            std::cout << std::endl;
+            std::cout << "[SUCCESS]    launching shell" << std::endl;
+            std::cout << std::endl;
+
             
             //launching a shell in the child container 
             char* cmd[] = {(char*)config.command.c_str(), NULL};
             execvp(cmd[0], cmd);
 
             //execvp only returns if it fails
-            std::cerr << "Error launching shell" << std::endl;
+            std::cerr << "[ERROR]Error launching shell" << std::endl;
             return -1;
         }
 

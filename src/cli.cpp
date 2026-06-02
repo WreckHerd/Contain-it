@@ -10,10 +10,11 @@ namespace containit{
         {
             std::cout << "Usage: contain-it run [OPTIONS]\n"
                         << "Options:\n"
+                        << "  -n, --hostname <name> Set container hostname (default: Container)\n"
                         << "  -m, --memory <bytes>  Set memory limit (default: 50MB)\n"
                         << "  -r, --rootfs <path>   Path to the root filesystem\n"
                         << "  -c, --cmd <command>   Command to execute (default: /bin/sh)\n"
-                        << "  -p, --procs <maxproc> Set process limit (default: 20)\n"
+                        << "  -p, --procs <num_proc> Set process limit (default: 20)\n"
                         << "  -u, --cpu <num_cores> Set core limit (eg. 0.5, 1.0)\n"
                         << "  -h, --help            Show this help message\n";
             exit(1);
@@ -35,6 +36,7 @@ namespace containit{
             //struct option is the data type 
             //long_options is the indetifier, [] specifies array
             struct option long_options[] = {
+                {"hostname", required_argument, 0, 'n'},
                 {"memory", required_argument, 0, 'm'},
                 {"rootfs", required_argument, 0, 'r'},
                 {"cmd", required_argument, 0, 'c'},
@@ -50,10 +52,13 @@ namespace containit{
             //parsing starts from argv[2]; skipping ""./contain-it" and "run".
             optind = 2;
 
-            while((opt = getopt_long(argc, argv, "m:r:c:p:u:h", long_options, &option_index)) != -1)
+            while((opt = getopt_long(argc, argv, "n:m:r:c:p:u:h", long_options, &option_index)) != -1)
             {
                 switch(opt)
                 {
+                    case 'n':
+                        config.hostname = optarg;
+                        break;
                     case 'm':
                         config.memory_limit = optarg;
                         break;
