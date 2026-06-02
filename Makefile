@@ -44,5 +44,5 @@ setup-rootfs:
 	@echo "[INFO] Installing test suite into container..."
 	@cp tests/verify.sh $(ROOTFS_DIR)/
 	@chmod +x $(ROOTFS_DIR)/verify.sh
-	@g++ -O2 -static tests/eater.cpp -o $(ROOTFS_DIR)/eater
+	@g++ -O2 -static tests/mem-limit-visual.cpp -o $(ROOTFS_DIR)/mem-limit-visual
 	@echo "[SUCCESS] Root filesystem and test suite ready at ./$(ROOTFS_DIR)"
