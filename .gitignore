@@ -4,7 +4,7 @@ build/
 *.o
 
 
-apline-rootfs/
+alpine-rootfs/
 *.tar.gz
 
 .vagrant/
