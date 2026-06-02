@@ -34,6 +34,18 @@ namespace containit {
                 std::cerr << "[ERROR]   couldn't set memory limit" << strerror(errno) << std::endl;
             }
 
+            // Block Swap Memory (Force OOM Killer)
+            std::ofstream swap_file(std::string(cgrp_dir) + "/memory.swap.max");
+            if (swap_file.is_open()) {
+                swap_file << "0"; // 0 bytes of swap allowed
+                swap_file.close();
+                std::cout << "  ---> Swap memory restricted to 0 bytes.\n";
+            } else {
+                // Some systems don't have swap enabled at the kernel level, 
+                // so this file might not exist. We can safely ignore it if so.
+                std::cout << "[WARN] Swap limit file not found (system swap might be disabled).\n";
+            }
+
             //restricting the max processes for container cgroup to max_proc
             std::ofstream maxpid_file(std::string(cgrp_dir) + "/pids.max");
             if(maxpid_file.is_open())
