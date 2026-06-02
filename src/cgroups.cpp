@@ -27,7 +27,7 @@ namespace containit {
             {
                 mem_file << config.memory_limit;
                 mem_file.close();
-                std::cout << "  --->    Memory limit set to: " << config.memory_limit << "bytes" << std::endl;
+                std::cout << "  --->    Memory limit set to: " << config.memory_limit << " bytes" << std::endl;
             }
             else
             {

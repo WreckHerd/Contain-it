@@ -11,11 +11,11 @@ namespace containit{
             std::cout << "Usage: contain-it run [OPTIONS]\n"
                         << "Options:\n"
                         << "  -n, --hostname <name> Set container hostname (default: Container)\n"
-                        << "  -m, --memory <bytes>  Set memory limit (default: 50MB)\n"
+                        << "  -m, --memory <megabytes>  Set memory limit (default: 50MB)\n"
                         << "  -r, --rootfs <path>   Path to the root filesystem\n"
                         << "  -c, --cmd <command>   Command to execute (default: /bin/sh)\n"
                         << "  -p, --procs <num_proc> Set process limit (default: 20)\n"
-                        << "  -u, --cpu <num_cores> Set core limit (eg. 0.5, 1.0)\n"
+                        << "  -u, --cpu <num_cores> Set core limit eg. 0.5, 1.0 (default: nolimit)\n"
                         << "  -h, --help            Show this help message\n";
             exit(1);
         }
@@ -59,9 +59,27 @@ namespace containit{
                     case 'n':
                         config.hostname = optarg;
                         break;
-                    case 'm':
-                        config.memory_limit = optarg;
-                        break;
+                    case 'm': { 
+                            try {
+                                // 1. Convert the user's string input (e.g., "50") to a long integer
+                                long long input_mb = std::stoll(optarg);
+                                
+                                // 2. Multiply by 1024 * 1024 to get raw bytes
+                                long long bytes = input_mb * 1024 * 1024;
+                                
+                                // 3. Save it to your config as a string so cgroups.cpp can write it directly
+                                config.memory_limit = std::to_string(bytes);
+                            } 
+                            catch (const std::invalid_argument& e) {
+                                std::cerr << "[ERROR] Invalid memory format. Please provide an integer (e.g., 50 for 50MB).\n";
+                                exit(EXIT_FAILURE);
+                            }
+                            catch (const std::out_of_range& e) {
+                                std::cerr << "[ERROR] Memory value is too large.\n";
+                                exit(EXIT_FAILURE);
+                            }
+                            break;
+                        }
                     case 'r':
                         config.rootfs_path = optarg;
                         break;
