@@ -39,7 +39,7 @@ namespace containit {
             if (swap_file.is_open()) {
                 swap_file << "0"; // 0 bytes of swap allowed
                 swap_file.close();
-                std::cout << "  ---> Swap memory restricted to 0 bytes.\n";
+                std::cout << "  --->    Swap memory restricted to 0 bytes.\n";
             } else {
                 // Some systems don't have swap enabled at the kernel level, 
                 // so this file might not exist. We can safely ignore it if so.
