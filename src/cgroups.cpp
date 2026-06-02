@@ -86,6 +86,7 @@ namespace containit {
 
         void cleanup() {
             // Remove the directory to prevent cluttering the host's cgroup filesystem
+            rmdir("/sys/fs/cgroup/container");
         }
 
     } 

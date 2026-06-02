@@ -12,9 +12,42 @@ const int STACK_SIZE = 65536; //64kb
 
 ContainerConf config;
 
+pid_t global_child_pid = -1;
+char* global_stack_base = nullptr;
+
+void handle_teardown(int signum) {
+    std::cout << "\n[Host] Interrupt signal (" << signum << ") received. Initiating graceful teardown...\n";
+
+    // 1. Terminate the child process if active
+    if (global_child_pid > 0) {
+        std::cout << "  ---> Terminating isolated container process...\n";
+        kill(global_child_pid, SIGKILL); 
+        waitpid(global_child_pid, NULL, 0); 
+    }
+
+    // 2. Clean up host resources
+    std::cout << "  ---> Sweeping cgroup limits...\n";
+    containit::cgroups::cleanup();
+
+    // 3. Free the heap-allocated stack memory safely
+    if (global_stack_base != nullptr) {
+        std::cout << "  ---> Deallocating container execution stack memory...\n";
+        delete[] global_stack_base;
+        global_stack_base = nullptr;
+    }
+
+    std::cout << "[Host] Teardown complete. Exiting safely.\n";
+    exit(signum);
+}
+
 
 int main(int argc, char* argv[])
 {
+
+    signal(SIGINT, handle_teardown);
+    signal(SIGTERM, handle_teardown);
+
+
     containit::cli::parser(argc, argv);
 
     std::cout << "[INFO]    Starting the container engine" << std::endl;
@@ -35,6 +68,8 @@ int main(int argc, char* argv[])
     //allocating memory on heap for child's stack
     char* stack = new char[STACK_SIZE];
 
+    global_stack_base = stack;
+
     //stack grows downwards; pointer to the top of the stack is required
     char* stack_top = stack + STACK_SIZE;
 
@@ -50,6 +85,8 @@ int main(int argc, char* argv[])
     {
         std::cerr << "[ERROR]   Clone() failed" << strerror(errno) << std::endl;
     }
+
+    global_child_pid = child_pid;
 
     //child is blocked at the read line
 
@@ -71,7 +108,7 @@ int main(int argc, char* argv[])
 
     std::cout << "[DONE]    Container exited, cleaning up..." << std::endl;
 
-    rmdir("/sys/fs/cgroup/container");
+    containit::cgroups::cleanup();
     delete[] stack;
 
     return 0;

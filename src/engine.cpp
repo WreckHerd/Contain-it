@@ -55,7 +55,7 @@ namespace containit {
             //chrooting into the alpine image 
             if(chroot(config.rootfs_path.c_str()) != 0)
             {
-                std::cerr << "[ERROR]Couldn't chroot into the image " << strerror(errno) << std::endl;
+                std::cerr << "[ERROR]   Couldn't chroot into the image " << strerror(errno) << std::endl;
                 return -1;
             }
             std::cout << "[INFO]    Root directory successfully changed to the image" << std::endl;
@@ -92,16 +92,25 @@ namespace containit {
             setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin", 1); // Set standard Alpine paths
 
             std::cout << std::endl;
-            std::cout << "[SUCCESS]    launching shell" << std::endl;
+            std::cout << "[SUCCESS]    executing command in container" << std::endl;
             std::cout << std::endl;
 
             
-            //launching a shell in the child container 
-            char* cmd[] = {(char*)config.command.c_str(), NULL};
+            //executing command in the  child container 
+            std::string shell = "/bin/sh";
+            std::string arg = "-c";
+
+            char* cmd[] = {
+                (char*)shell.c_str(),
+                (char*)arg.c_str(),
+                (char*)config.command.c_str(), // The raw string (e.g., "sleep 1000")
+                NULL
+            };
+
             execvp(cmd[0], cmd);
 
             //execvp only returns if it fails
-            std::cerr << "[ERROR]Error launching shell" << std::endl;
+            std::cerr << "[ERROR]   Error executing command" << std::endl;
             return -1;
         }
 
