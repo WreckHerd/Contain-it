@@ -32,3 +32,13 @@ clean:
 	rm -rf $(OBJ_DIR) $(EXECUTABLE)
 
 .PHONY: all clean
+
+# Define the rootfs directory
+ROOTFS_DIR = alpine-rootfs
+
+# The automation target
+setup-rootfs:
+	@echo "[INFO] Downloading and extracting Alpine mini-rootfs..."
+	@mkdir -p $(ROOTFS_DIR)
+	@wget -qO- https://dl-cdn.alpinelinux.org/alpine/v3.18/releases/x86_64/alpine-minirootfs-3.18.4-x86_64.tar.gz | tar -xz -C $(ROOTFS_DIR)
+	@echo "[SUCCESS] Root filesystem ready at ./$(ROOTFS_DIR)"
